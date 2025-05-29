@@ -1,5 +1,5 @@
 # GiftMe Telegram bot
-** This bot is for gifts **
+**This bot is for gifts**
 Used Frameworks:
  - aiogram - for telegram bot
  - FastAPI - for API
