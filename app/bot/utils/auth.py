@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 from urllib.parse import unquote
 from app.core.config import settings
 from typing import Dict, Optional
@@ -35,4 +36,15 @@ def verify_telegram_auth(init_data: str) -> Optional[Dict]:
         
         return None
     except Exception:
+        return None
+
+def get_user_from_init_data(init_data: str) -> Optional[Dict]:
+    auth_data = verify_telegram_auth(init_data)
+    if not auth_data:
+        return None
+    
+    try:
+        user_data = json.loads(auth_data.get('user', '{}'))
+        return user_data
+    except:
         return None

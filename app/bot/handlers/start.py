@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery
 from aiogram.filters import CommandStart
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.user import UserService
@@ -19,13 +19,13 @@ async def start_handler(message: Message, session: AsyncSession):
             [
                 InlineKeyboardButton(
                     text="🎰 Play Roulette",
-                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/roulette")
+                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/docs")
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="🎁 My Gifts",
-                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/profile")
+                    text="📊 API Documentation",
+                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/docs")
                 ),
                 InlineKeyboardButton(
                     text="ℹ️ How to Play",
@@ -51,15 +51,21 @@ async def start_handler(message: Message, session: AsyncSession):
         f"• 👑 Premium Subscriptions\n"
         f"• 🏆 Special Badges\n"
         f"• 💎 And much more!\n\n"
-        f"🍀 **Good luck and have fun!**"
+        f"🍀 **Good luck and have fun!**\n\n"
+        f"📱 **User Info:**\n"
+        f"• ID: `{user.telegram_id}`\n"
+        f"• Username: @{user.username or 'N/A'}\n"
+        f"• Premium: {'✅' if user.is_premium else '❌'}"
     )
     
-    await message.answer_photo(
-        photo="https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=800&h=600&fit=crop",
-        caption=welcome_text,
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
+    # Use the local image file
+    with open("static/pepe-heart.png", "rb") as photo:
+        await message.answer_photo(
+            photo=photo,
+            caption=welcome_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
 
 @router.callback_query(F.data == "how_to_play")
 async def how_to_play_callback(callback: CallbackQuery):
@@ -69,7 +75,7 @@ async def how_to_play_callback(callback: CallbackQuery):
         f"2️⃣ Pay **{settings.SPIN_COST} ⭐ Stars** to spin the wheel\n"
         f"3️⃣ Watch the wheel spin and see what you win!\n"
         f"4️⃣ Receive your gift instantly in Telegram\n"
-        f"5️⃣ Check **'🎁 My Gifts'** to see your collection\n\n"
+        f"5️⃣ Check **'📊 API Documentation'** to see technical details\n\n"
         f"💡 **Tips:**\n"
         f"• Higher value gifts are rarer\n"
         f"• All gifts are worth more than the spin cost\n"
@@ -82,7 +88,7 @@ async def how_to_play_callback(callback: CallbackQuery):
             [
                 InlineKeyboardButton(
                     text="🎰 Start Playing",
-                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/roulette")
+                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/docs")
                 )
             ],
             [
@@ -104,13 +110,13 @@ async def back_to_main_callback(callback: CallbackQuery):
             [
                 InlineKeyboardButton(
                     text="🎰 Play Roulette",
-                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/roulette")
+                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/docs")
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="🎁 My Gifts",
-                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/profile")
+                    text="📊 API Documentation",
+                    web_app=WebAppInfo(url=f"{settings.MINI_APP_URL}/docs")
                 ),
                 InlineKeyboardButton(
                     text="ℹ️ How to Play",
