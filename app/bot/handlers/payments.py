@@ -12,57 +12,67 @@ async def process_pre_checkout_query(
     pre_checkout_query: PreCheckoutQuery,
     session: AsyncSession
 ):
-    payment_service = PaymentService(session)
-    
-    await payment_service.create_transaction(
-        user_id=pre_checkout_query.from_user.id,
-        amount=settings.SPIN_COST,
-        transaction_id=pre_checkout_query.id
-    )
-    
-    await pre_checkout_query.answer(ok=True)
+    try:
+        payment_service = PaymentService(session)
+        
+        await payment_service.create_transaction(
+            user_id=pre_checkout_query.from_user.id,
+            amount=settings.SPIN_COST,
+            transaction_id=pre_checkout_query.id
+        )
+        
+        await pre_checkout_query.answer(ok=True)
+    except Exception as e:
+        print(f"Error in pre_checkout_query: {e}")
+        await pre_checkout_query.answer(ok=False, error_message="Payment processing error")
 
 @router.message(F.successful_payment)
 async def process_successful_payment(
     message: Message,
     session: AsyncSession
 ):
-    payment_service = PaymentService(session)
-    gift_service = GiftService(session)
-    
-    payment = message.successful_payment
-    
-    await payment_service.update_transaction_status(
-        transaction_id=payment.telegram_payment_charge_id,
-        status="completed"
-    )
-    
-    won_gift = await gift_service.get_random_gift()
-    
-    if won_gift:
-        await gift_service.record_won_gift(
-            user_id=message.from_user.id,
-            gift_id=won_gift.id
+    try:
+        payment_service = PaymentService(session)
+        gift_service = GiftService(session)
+        
+        payment = message.successful_payment
+        
+        await payment_service.update_transaction_status(
+            transaction_id=payment.telegram_payment_charge_id,
+            status="completed"
         )
         
-        try:
-            await message.bot.send_gift(
+        won_gift = await gift_service.get_random_gift()
+        
+        if won_gift:
+            await gift_service.record_won_gift(
                 user_id=message.from_user.id,
-                gift_id=won_gift.gift_id
+                gift_id=won_gift.id
             )
             
+            try:
+                await message.bot.send_gift(
+                    user_id=message.from_user.id,
+                    gift_id=won_gift.gift_id
+                )
+                
+                await message.answer(
+                    f"🎉 Congratulations! You won: {won_gift.name}!\n"
+                    f"The gift has been sent to you! 🎁"
+                )
+            except Exception:
+                await message.answer(
+                    f"🎉 Congratulations! You won: {won_gift.name}!\n"
+                    f"Unfortunately, we couldn't send the gift automatically. "
+                    f"Please contact support with your transaction ID: {payment.telegram_payment_charge_id}"
+                )
+        else:
             await message.answer(
-                f"🎉 Congratulations! You won: {won_gift.name}!\n"
-                f"The gift has been sent to you! 🎁"
+                "😔 Sorry, no gifts are available at the moment. "
+                "Your Stars will be refunded shortly."
             )
-        except Exception:
-            await message.answer(
-                f"🎉 Congratulations! You won: {won_gift.name}!\n"
-                f"Unfortunately, we couldn't send the gift automatically. "
-                f"Please contact support with your transaction ID: {payment.telegram_payment_charge_id}"
-            )
-    else:
+    except Exception as e:
+        print(f"Error processing successful payment: {e}")
         await message.answer(
-            "😔 Sorry, no gifts are available at the moment. "
-            "Your Stars will be refunded shortly."
+            "❌ There was an error processing your payment. Please contact support."
         )

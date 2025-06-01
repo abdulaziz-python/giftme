@@ -1,8 +1,11 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, BigInteger, Float, JSON, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, BigInteger, JSON
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.core.database import Base
 from enum import Enum
+from datetime import datetime
+
+Base = declarative_base()
 
 class TransactionStatus(str, Enum):
     PENDING = "pending"
@@ -31,6 +34,7 @@ class User(Base):
     last_activity = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
     
     transactions = relationship("Transaction", back_populates="user")
     won_gifts = relationship("WonGift", back_populates="user")

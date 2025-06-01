@@ -32,7 +32,6 @@ async def get_current_user(
     x_init_data: str = Header(..., alias="X-Init-Data"),
     session: AsyncSession = Depends(get_session)
 ):
-    """Get current user information from Telegram init data"""
     user_data = get_user_from_init_data(x_init_data)
     if not user_data:
         raise HTTPException(
@@ -66,17 +65,15 @@ async def get_current_user(
 async def get_user_analytics(
     session: AsyncSession = Depends(get_session)
 ):
-    """Get user analytics and statistics"""
     user_service = UserService(session)
     
     total_users = await user_service.get_user_count()
     
-    # You can add more analytics here
     return UserAnalytics(
         total_users=total_users,
-        premium_users=0,  # Implement this
-        active_users_today=0,  # Implement this
-        blocked_users=0  # Implement this
+        premium_users=0,
+        active_users_today=0,
+        blocked_users=0
     )
 
 @router.get("/", response_model=List[UserResponse])
@@ -85,7 +82,6 @@ async def get_all_users(
     offset: int = 0,
     session: AsyncSession = Depends(get_session)
 ):
-    """Get all users with pagination"""
     user_service = UserService(session)
     users = await user_service.get_all_users(limit=limit, offset=offset)
     

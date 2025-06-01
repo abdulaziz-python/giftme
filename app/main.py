@@ -21,6 +21,8 @@ dp = None
 if settings.BOT_TOKEN:
     try:
         from app.bot import create_bot, create_dispatcher
+        from app.bot.tasks.reminder_task import send_reminder_task
+        
         bot = create_bot()
         dp = create_dispatcher()
         print("✅ Bot initialized successfully")
@@ -41,7 +43,9 @@ async def lifespan(app: FastAPI):
     # Create directories
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     os.makedirs(settings.CHARTS_DIR, exist_ok=True)
+    os.makedirs(settings.MEDIA_DIR, exist_ok=True)
     os.makedirs("static", exist_ok=True)
+    print("✅ Directories created")
     
     # Seed data
     try:
@@ -55,18 +59,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ Data seeding failed: {e}")
     
-    # Start bot
+    # Start bot in polling mode (no webhook)
     if bot and dp:
         try:
-            if settings.WEBHOOK_URL:
-                await bot.set_webhook(
-                    url=f"{settings.WEBHOOK_URL}{settings.WEBHOOK_PATH}",
-                    allowed_updates=dp.resolve_used_update_types()
-                )
-                print(f"✅ Webhook set: {settings.WEBHOOK_URL}{settings.WEBHOOK_PATH}")
-            else:
-                asyncio.create_task(dp.start_polling(bot))
-                print("✅ Bot started in polling mode")
+            # Always use polling mode
+            polling_task = asyncio.create_task(dp.start_polling(bot))
+            print("✅ Bot started in polling mode")
+            
+            # Start reminder task
+            reminder_task = asyncio.create_task(send_reminder_task(bot))
+            print("✅ Reminder task started")
+            
         except Exception as e:
             print(f"❌ Bot start failed: {e}")
     
@@ -95,14 +98,18 @@ app = FastAPI(
     - 📊 **Analytics**: Real-time statistics and charts
     - 💳 **Payments**: Telegram Stars integration
     - 📱 **Mini App**: Seamless Telegram Web App experience
+    - 🐸 **Smart Reminders**: Automatic fun reminders for inactive users
     
-    ### Authentication:
-    Most endpoints require Telegram authentication via `X-Init-Data` header.
+    ### Bot Features:
+    - **Polling Mode**: Runs independently without webhooks
+    - **Smart Reminders**: Sends fun GIFs to users inactive for 3+ days
+    - **Random Content**: Different memes and texts each time
     
     ### Getting Started:
-    1. Start the bot in Telegram
-    2. Use the Web App to interact with the API
-    3. Check the roulette endpoints to test functionality
+    1. Set BOT_TOKEN in environment
+    2. Start the bot in Telegram
+    3. Use the Web App to interact with the API
+    4. Inactive users get fun reminders automatically
     """,
     version="2.0.0",
     lifespan=lifespan,
@@ -126,25 +133,13 @@ try:
         app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
     if os.path.exists(settings.CHARTS_DIR):
         app.mount("/charts", StaticFiles(directory=settings.CHARTS_DIR), name="charts")
+    if os.path.exists(settings.MEDIA_DIR):
+        app.mount("/media", StaticFiles(directory=settings.MEDIA_DIR), name="media")
 except Exception as e:
     print(f"⚠️ Static files mount error: {e}")
 
 # Include API routes
 app.include_router(api_router)
-
-@app.post(settings.WEBHOOK_PATH)
-async def webhook_handler(request: Request):
-    """Telegram webhook handler"""
-    if not bot or not dp:
-        return {"status": "bot_not_configured"}
-    
-    try:
-        update_data = await request.json()
-        await dp.feed_webhook_update(bot, update_data)
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Webhook error: {e}")
-        return {"status": "error", "message": str(e)}
 
 @app.get("/")
 async def root():
@@ -158,7 +153,9 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.utcnow(),
         "bot_configured": bot is not None,
-        "database_configured": bool(settings.DATABASE_URL)
+        "database_configured": bool(settings.DATABASE_URL),
+        "mode": "polling",
+        "reminder_system": "active"
     }
 
 if __name__ == "__main__":

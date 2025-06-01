@@ -1,9 +1,10 @@
 from aiogram import Router, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery, FSInputFile
 from aiogram.filters import CommandStart
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.user import UserService
 from app.core.config import settings
+import os
 
 router = Router()
 
@@ -55,14 +56,24 @@ async def start_handler(message: Message, session: AsyncSession):
         f"📱 **User Info:**\n"
         f"• ID: `{user.telegram_id}`\n"
         f"• Username: @{user.username or 'N/A'}\n"
-        f"• Premium: {'✅' if user.is_premium else '❌'}"
+        f"• Premium: {'✅' if user.is_premium else '❌'}\n\n"
+        f"💡 **Tip**: If you don't visit for 3 days, I'll send you a fun surprise! 🐸"
     )
     
     # Use the local image file
-    with open("static/pepe-heart.png", "rb") as photo:
+    image_path = "static/pepe-heart.png"
+    if os.path.exists(image_path):
+        photo = FSInputFile(image_path)
         await message.answer_photo(
             photo=photo,
             caption=welcome_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+    else:
+        # Fallback to text message if image not found
+        await message.answer(
+            text=welcome_text,
             reply_markup=keyboard,
             parse_mode="Markdown"
         )
@@ -79,7 +90,8 @@ async def how_to_play_callback(callback: CallbackQuery):
         f"💡 **Tips:**\n"
         f"• Higher value gifts are rarer\n"
         f"• All gifts are worth more than the spin cost\n"
-        f"• You can win multiple times!\n\n"
+        f"• You can win multiple times!\n"
+        f"• Stay active to avoid missing fun reminders! 🐸\n\n"
         f"🎊 **Start spinning and good luck!**"
     )
     
@@ -142,7 +154,8 @@ async def back_to_main_callback(callback: CallbackQuery):
         f"• 👑 Premium Subscriptions\n"
         f"• 🏆 Special Badges\n"
         f"• 💎 And much more!\n\n"
-        f"🍀 **Good luck and have fun!**"
+        f"🍀 **Good luck and have fun!**\n\n"
+        f"💡 **Tip**: If you don't visit for 3 days, I'll send you a fun surprise! 🐸"
     )
     
     await callback.message.edit_caption(
